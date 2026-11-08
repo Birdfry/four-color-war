@@ -14,14 +14,14 @@ const HOME=[[78,78],[742,78],[78,742],[742,742]];
 // ---- Unit roster: 0 剑士 1 弓手 2 盾卫 3 巨人(王冠召唤) 4 = faction special ----
 const TNAME=['剑士','弓手','盾卫','巨人'];
 const SP=[
- {name:'烈焰狂战士',short:'狂战士',hp:80,v:50,dmg:15,range:24,detect:112,cd:.6,desc:'近战 · 溅射灼烧周围敌人'},
- {name:'潮汐法师',short:'法师',hp:44,v:37,dmg:12,range:150,detect:175,cd:1.1,desc:'远程 · 水弹命中减速 45%'},
- {name:'森灵树人',short:'树人',hp:150,v:24,dmg:9,range:26,detect:112,cd:.9,desc:'重装 · 治疗光环 3/秒(不叠加)'},
+ {name:'烈焰狂战士',short:'狂战士',hp:76,v:50,dmg:14,range:24,detect:112,cd:.6,desc:'近战 · 溅射灼烧周围敌人'},
+ {name:'潮汐法师',short:'法师',hp:54,v:38,dmg:14,range:155,detect:178,cd:1.1,desc:'远程 · 水弹命中减速 45%'},
+ {name:'森灵树人',short:'树人',hp:160,v:24,dmg:9,range:26,detect:112,cd:.9,desc:'重装 · 治疗光环 3.2/秒(不叠加)'},
  {name:'曙光骑兵',short:'骑兵',hp:95,v:60,dmg:15,range:24,detect:112,cd:.8,desc:'突击 · 攻城×1.7 · 大范围染色'}];
 function unitName(f,t){return t===4?SP[f].short:TNAME[t]}
 // ---- Marble machine constants (identical geometry for every faction lane = fair) ----
 const LW=127,BR=6,GRAV=1150,VMAX=460,MOD_Y=[70,520],BIN_Y=330,BIN_B=366,PORTX=63.5,PORTY=14,LAUNCH_GAP=.42;
-const HEAL=3,BALL_CAP=12,TEMP_CAP=.30,TEMP_DECAY=.02,PLAZA_R=96,PLAZA_NEED=.30;
+const STORM=480,VERDICT=600,MILES=[20,50,90],HEAL=3,BALL_CAP=12,TEMP_CAP=.30,TEMP_DECAY=.02,PLAZA_R=96,PLAZA_NEED=.30;
 const M1_DIV=[57],M1_NAME=['复制','发射'];
 const M2_DIV=[30,54,73,97],M2_TYPES=[0,1,4,2,0];
 const PEGS=[],ROWS=[];for(let r=0;r<10;r++){ROWS[r]=[];let y=60+r*24,odd=r%2;for(let k=(odd?0:1);k<(odd?5:5);k++){let x=odd?21.5+k*21:11+k*21,bump=r===4&&(k===1||k===4);let p={x,y,r:bump?7:4,bump};PEGS.push(p);ROWS[r].push(p)}}
@@ -40,14 +40,14 @@ function sound(f=440,d=.08,type='sine'){if(muted)return;try{audio ||= new (windo
 function burst(x,y,c,n=12,big=1){for(let i=0;i<n;i++){let a=rng()*6.28,v=(25+rng()*85)*big;particles.push({x,y,vx:Math.cos(a)*v,vy:Math.sin(a)*v,life:.35+rng()*.5,max:1,c,r:2+rng()*3})}}
 function floating(s,x,y,c='#fff',size=18,panel=false){floats.push({s,x,y,c,size,life:1.3,panel})}
 function announce(s,c='#f5ce64',sub=''){banner={s,c,sub,life:3.2};feed.unshift({s,c,t:time});feed=feed.slice(0,6)}
-function logEvent(e){e.t=time;events.push(e);if(events.length>6000)events.shift()}
+function logEvent(e){e.t=time;events.push(e);if(events.length>60000)events.shift()}
 function paint(x,y,f,r=0){let tx=Math.floor(x/T),ty=Math.floor(y/T);for(let dy=-r;dy<=r;dy++)for(let dx=-r;dx<=r;dx++){let a=tx+dx,b=ty+dy;if(a>=0&&b>=0&&a<N&&b<N&&(r===0||dx*dx+dy*dy<=r*r))tiles[b*N+a]=f}}
 function spawn(f,t){if(!teams[f].alive)return null;if(t===undefined)t=pick([0,0,0,1,1,2]);let [x,y]=HOME[f],a=rng()*6.28,s=t===4?SP[f]:null;
 let hp=s?s.hp:[58,38,130,600][t];let u={id:uid++,f,t,x:x+Math.cos(a)*35,y:y+Math.sin(a)*35,hp,max:hp,v:(s?s.v:[42,40,28,26][t])*(.9+rng()*.2),damage:s?s.dmg:[15,11,12,38][t],cd:rng(),phase:rng()*6.28,face:f%2?-1:1,hit:0,swing:0,boost:0,shield:0,slow:0,route:120+rng()*70,goal:null};units.push(u);return u}
 function shuffleBag(){let a=[0,1,2,3];for(let i=3;i>0;i--){let j=Math.floor(rng()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a}
-function newBall(f){return{f,st:'wait',x:PORTX,y:PORTY,vx:0,vy:0,still:0,age:0,trail:[]}}
+let bid=0;function newBall(f){return{id:bid++,f,st:'wait',x:PORTX,y:PORTY,vx:0,vy:0,still:0,age:0,trail:[]}}
 function reset(s){seed=s??(Date.now()^Math.random()*1e9);state=seed>>>0;units=[];arrows=[];particles=[];floats=[];powers=[];feed=[];beams=[];events=[];bombLog=[];powerBag=[];shieldTurn=0;tiles=new Int8Array(N*N).fill(-1);
-teams=C.map((c,f)=>({f,hp:1550,max:1550,alive:true,land:0,count:0,kills:0,bosses:0,peak:0,comeback:false,cap:BALL_CAP,temp:0,rankBonus:0,rank:1,tie:false,launchCd:f*.1,spawnLog:[],spawned:0,lastType:-1,dups:0,launches:0,plazaBonus:false,plaza:0,capFlash:0,byType:[0,0,0,0,0]}));
+teams=C.map((c,f)=>({f,hp:1550,max:1550,alive:true,land:0,count:0,kills:0,bosses:0,peak:0,comeback:false,cap:BALL_CAP,temp:0,rankBonus:0,rank:1,tie:false,launchCd:f*.1,spawnLog:[],spawned:0,lastType:-1,dups:0,launches:0,plazaBonus:false,miles:0,coolHits:0,plaza:0,capFlash:0,byType:[0,0,0,0,0]}));
 balls=[];for(let f=0;f<4;f++){balls.push(newBall(f),newBall(f))}
 time=0;powerClock=5;mode='intro';intro=4;winner=-1;winClock=0;banner=null;shake=0;paused=false;document.getElementById('pause').textContent='Ⅱ 暂停';
 // Identical starting army for every faction (fair); later troops come only from marbles.
@@ -58,7 +58,7 @@ function census(){for(let t of teams){t.land=0;t.count=0;t.plaza=0}for(let v of 
 function ranking(){let alive=teams.filter(t=>t.alive);for(let t of teams){t.rankBonus=0;t.rank=1+alive.filter(o=>o.land>t.land).length;t.tie=alive.some(o=>o!==t&&o.land===t.land)}if(alive.length<2)return;let mx=Math.max(...alive.map(t=>t.land)),mn=Math.min(...alive.map(t=>t.land));if(mx===mn)return;for(let t of alive){if(t.land===mx)t.rankBonus=.10;else if(t.land===mn)t.rankBonus=.05}}
 function mult(f){let t=teams[f];return(1+t.rankBonus)*(1+t.temp)}
 function damage(u,d,f){if(u.hp<=0)return;u.hp-=d*(u.shield>0?.32:1);u.hit=.15;u.swing=.1;if(u.hp<=0){teams[f].kills++;burst(u.x,u.y,C[u.f],u.t===3?35:8,u.t===3?2:1);if(rng()<.18)floating('+1',u.x,u.y,C[f],14);if(u.t===3){shake=9;announce(NAME[u.f]+'方巨人倒下！',C[u.f])}}}
-function baseDamage(f,d,attacker){let t=teams[f];if(!t.alive)return;t.hp-=d;if(t.hp<=0)eliminate(f,attacker)}
+let noBaseDamage=false;function baseDamage(f,d,attacker){let t=teams[f];if(!t.alive)return;if(noBaseDamage&&(attacker!==-1||noBaseDamage==='all'))return;t.hp-=d;if(t.hp<=0)eliminate(f,attacker)}
 function eliminate(f,attacker){let t=teams[f];if(!t.alive)return;t.alive=false;t.hp=0;for(let i=0;i<tiles.length;i++)if(tiles[i]===f)tiles[i]=-1;for(let u of units)if(u.f===f){u.hp=0;burst(u.x,u.y,C[f],5)}balls=balls.filter(b=>b.f!==f);burst(...HOME[f],C[f],80,2.5);shake=16;announce(NAME[f]+'方出局！',C[f],'城堡已被攻破 · 领地归于中立 · 弹珠熄灭');sound(120,.5,'sawtooth');}
 // ---- Power placement by purpose ----
 const DIRS=[[1,0],[-1,0],[0,1],[0,-1]];
@@ -92,13 +92,13 @@ function moveTo(b,tx,ty,dur,next,kind){let [x,y]=panelPos(b);b.px=x;b.py=y;b.ax=
 function toPort(b,kind){moveTo(b,laneX(b.f)+PORTX,MOD_Y[0]-16,kind==='return'?.8:.45,'wait',kind)}
 function launchBall(b,mod){b.st='m'+(mod+1);b.mod=mod;b.x=PORTX+(rng()-.5)*6;b.y=PORTY;b.vx=(rng()-.5)*90;b.vy=40;b.still=0;b.age=0}
 function landed(b,bin){let t=teams[b.f],f=b.f;b.st='land';b.bin=bin;b.lt=.22;b.lx=b.x;
- if(b.mod===0){if(bin===0){let before=balls.filter(o=>o.f===f).length;if(before<t.cap){let nb=newBall(f);nb.st='land';nb.mod=0;nb.x=b.x;nb.y=b.y;nb.lt=.22;nb.bin=0;nb.child=true;balls.push(nb);t.dups++;floating('复制 +1',laneX(f)+b.x,MOD_Y[0]+BIN_Y-10,C[f],16,true);sound(900,.06)}else{t.capFlash=1.6}logEvent({kind:'dup',f,x:b.x,bin,before,after:balls.filter(o=>o.f===f).length,cap:t.cap})}
+ if(b.mod===0){if(bin===0&&b.cool){t.coolHits++;floating('冷却中',laneX(f)+b.x,MOD_Y[0]+BIN_Y-10,'#9fb6c2',13,true);logEvent({kind:'coolBlock',id:b.id,f,x:b.x,bin,balls:balls.filter(o=>o.f===f).length})}else if(bin===0){t._lastChild=null;let before=balls.filter(o=>o.f===f).length;if(before<t.cap){b.cool=true;let nb=newBall(f);nb.st='land';nb.mod=0;nb.x=b.x;nb.y=b.y;nb.lt=.22;nb.bin=0;nb.child=true;nb.cool=true;t._lastChild=nb.id;balls.push(nb);t.dups++;floating('复制 +1',laneX(f)+b.x,MOD_Y[0]+BIN_Y-10,C[f],16,true);sound(900,.06)}else{t.capFlash=1.6}logEvent({kind:'dup',id:b.id,child:t._lastChild,f,x:b.x,bin,cool:!!b.cool,before,after:balls.filter(o=>o.f===f).length,cap:t.cap})}
   else{t.launches++;logEvent({kind:'launch',f,x:b.x,bin,units:units.filter(u=>u.f===f).length,balls:balls.filter(o=>o.f===f).length})}}
- else{let type=M2_TYPES[bin];spawnFromMarble(f,type,b)}}
+ else{let type=M2_TYPES[bin];let wasCool=!!b.cool;b.cool=false;spawnFromMarble(f,type,b);if(wasCool)logEvent({kind:'coolClear',id:b.id,f})}}
 function spawnFromMarble(f,type,b){let t=teams[f],capUnits=time>110?25:32,before=units.filter(u=>u.f===f&&u.hp>0).length,u=null;let [px,py]=[laneX(f)+b.x,MOD_Y[1]+BIN_B-6];
- if(t.alive&&before<capUnits){u=spawn(f,type);t.spawned++;t.spawnLog.push(time);t.byType[type]++;t.count++;beams.push({f,x:px,y:py,mx:u.x,my:u.y,life:.75,type});burst(u.x,u.y,C[f],10);floating('+'+unitName(f,type),u.x,u.y-22,C[f],15)}
+ if(t.alive&&before<capUnits){u=spawn(f,type);t.spawned++;if(MILES.includes(t.spawned)){t.cap++;t.miles++;let nb=newBall(f);nb.flash=2;balls.push(nb);announce(NAME[f]+'方出兵达 '+t.spawned+'，奖励 1 颗弹珠！',C[f],'里程碑奖励 · 弹珠上限 +1');logEvent({kind:'mile',f,n:t.spawned,balls:balls.filter(o=>o.f===f).length,cap:t.cap})}t.spawnLog.push(time);t.byType[type]++;t.count++;beams.push({f,x:px,y:py,mx:u.x,my:u.y,life:.75,type});burst(u.x,u.y,C[f],10);floating('+'+unitName(f,type),u.x,u.y-22,C[f],15)}
  else floating('兵力已满',px,py-30,'#ffe6a3',13,true);
- t.lastType=type;logEvent({kind:'spawn',f,x:b.x,bin:b.bin,type,before,after:units.filter(v=>v.f===f&&v.hp>0).length,spawned:!!u})}
+ t.lastType=type;logEvent({kind:'spawn',id:b.id,f,x:b.x,bin:b.bin,type,before,after:units.filter(v=>v.f===f&&v.hp>0).length,spawned:!!u})}
 function updateMarbles(dt){for(let t of teams){if(!t.alive)continue;t.temp=Math.max(0,t.temp-TEMP_DECAY*dt);t.capFlash-=dt;t.spawnLog=t.spawnLog.filter(s=>time-s<20);t.launchCd-=dt*mult(t.f);if(t.launchCd<=0){let w=balls.find(b=>b.f===t.f&&b.st==='wait');if(w){launchBall(w,0);t.launchCd=LAUNCH_GAP}else t.launchCd=0}}
  for(let b of [...balls]){let h=dt*mult(b.f);b.flash=(b.flash||0)-dt;
   if(b.st==='m1'||b.st==='m2'){b.age+=h;let [ox,oy]=[b.x,b.y];let bin=physics(b,h,b.mod?M2_DIV:M1_DIV);
@@ -112,8 +112,8 @@ function updateMarbles(dt){for(let t of teams){if(!t.alive)continue;t.temp=Math.
 function movePos(b,k){if(b.kind==='return'||b.kind==='dupReturn'){let rail=laneX(b.f)+LW+4.5;if(k<.15){let e=k/.15;b.px=b.ax+(rail-b.ax)*e;b.py=b.ay}else if(k<.85){let e=(k-.15)/.7;b.px=rail;b.py=b.ay+(b.by-b.ay)*e*e*(3-2*e)}else{let e=(k-.85)/.15;b.px=rail+(b.bx-rail)*e;b.py=b.by}}else{let e=k*k*(3-2*k);b.px=b.ax+(b.bx-b.ax)*e;b.py=b.ay+(b.by-b.ay)*e}}
 function plazaCheck(){let n=PLAZA.length;for(let t of teams){if(!t.alive||t.plazaBonus)continue;if(t.plaza/n>PLAZA_NEED){t.plazaBonus=true;t.cap+=1;let nb=newBall(t.f);balls.push(nb);nb.flash=2;logEvent({kind:'plaza',f:t.f,share:t.plaza/n,balls:balls.filter(b=>b.f===t.f).length});announce(NAME[t.f]+'方占领中心广场！',C[t.f],'永久获得 +1 颗弹珠（每局限一次）');burst(410,410,C[t.f],40,1.8);sound(990,.3,'triangle')}}}
 function update(dt){if(paused)return;if(mode==='intro'){intro-=dt;if(intro<=0){mode='battle';announce('四王之争 · 开战！','#f5ce64','弹珠落点决定兵种 → 占领地盘 → 攻破城堡')}return}if(mode==='win'){winClock+=dt;effects(dt);if(auto&&winClock>10)reset();return}
-time+=dt;noiseClock-=dt;census();ranking();plazaCheck();updateMarbles(dt);let alive=teams.filter(t=>t.alive);for(let t of alive){t.peak=Math.max(t.peak,t.land);if(t.peak>240&&t.land<t.peak*.5)t.comeback=true;if(t.comeback&&t.land>t.peak*.85){announce(NAME[t.f]+'方大逆转！',C[t.f],'绝境反击 · 领土重回巅峰');t.comeback=false}if(time>100){let lead=Math.max(...alive.map(a=>a.land));let pressure=(time-100)*1.25*(.65+(lead-t.land)/900);baseDamage(t.f,dt*pressure,-1)}}
-if(time>=165){let candidates=teams.filter(t=>t.alive).sort((a,b)=>(b.hp+b.land*2+b.count*7)-(a.hp+a.land*2+a.count*7));if(candidates.length>1){for(let i=1;i<candidates.length;i++)eliminate(candidates[i].f,candidates[0].f)}}
+time+=dt;noiseClock-=dt;census();ranking();plazaCheck();updateMarbles(dt);let alive=teams.filter(t=>t.alive);for(let t of alive){t.peak=Math.max(t.peak,t.land);if(t.peak>240&&t.land<t.peak*.5)t.comeback=true;if(t.comeback&&t.land>t.peak*.85){announce(NAME[t.f]+'方大逆转！',C[t.f],'绝境反击 · 领土重回巅峰');t.comeback=false}if(time>STORM){let lead=Math.max(...alive.map(a=>a.land));let pressure=(time-STORM)*1.25*(.65+(lead-t.land)/900);baseDamage(t.f,dt*pressure,-1)}}
+if(time>=VERDICT){let candidates=teams.filter(t=>t.alive).sort((a,b)=>(b.hp+b.land*2+b.count*7)-(a.hp+a.land*2+a.count*7));if(candidates.length>1){for(let i=1;i<candidates.length;i++)eliminate(candidates[i].f,candidates[0].f)}}
 powerClock-=dt;if(powerClock<=0&&powers.length<5){spawnPower();powerClock=5+rng()*3}for(let p of powers)p.life-=dt;powers=powers.filter(p=>p.life>0);
 // Spatial buckets keep combat smooth even on modest laptops.
 const buckets=new Map();for(let u of units){if(u.hp<=0)continue;let k=(u.x/100|0)+','+(u.y/100|0);if(!buckets.has(k))buckets.set(k,[]);buckets.get(k).push(u)}
@@ -125,12 +125,12 @@ let power=powers.reduce((a,b)=>!a||dist(u,b)<dist(u,a)?b:a,null);
 let goal;if(target){goal=target}else if(power&&dist(u,power)<200){goal=power}else if(bd<160||time>85){goal=basePoint}else{if(!u.goal||dist(u,u.goal)<25||rng()<dt*.1){let angle=rng()*6.28;u.goal={x:410+Math.cos(angle)*u.route,y:410+Math.sin(angle)*u.route};if(rng()<.35)u.goal=basePoint}goal=u.goal}
 let dx=goal.x-u.x,dy=goal.y-u.y,d=Math.hypot(dx,dy)||1;
 let attack=target&&ed<range;let hitBase=!target&&bd<(ranged?125:62);
-if((attack||hitBase)&&u.cd<=0){u.cd=sp?sp.cd:u.t===3?1.1:u.t===1?.95:.65;u.swing=.25;if(attack){if(ranged)arrows.push({x:u.x,y:u.y,target,damage:u.damage,f:u.f,life:1.8,orb:!!sp});else{damage(target,u.damage,u.f);target.x=clamp(target.x+dx/d*3,18,802);target.y=clamp(target.y+dy/d*3,18,802);if(u.t===3||(sp&&u.f===0)){burst(target.x,target.y,u.t===3?'#fff1b9':'#ff9a5c',8);for(let v of units)if(v!==target&&v.f!==u.f&&dist(v,target)<(u.t===3?34:34))damage(v,u.t===3?15:9,u.f)}}}else{baseDamage(base.f,u.damage*(u.t===3?2.8:sp&&u.f===3?2.55:1.5),u.f);burst(basePoint.x+(rng()-.5)*50,basePoint.y,'#fce1b2',3);if(rng()<.1)floating('−'+Math.round(u.damage*1.5),basePoint.x,basePoint.y-40,'#fff',15)}if(noiseClock<=0){sound(180+rng()*150,.035,'triangle');noiseClock=.15}}
+if((attack||hitBase)&&u.cd<=0){u.cd=sp?sp.cd:u.t===3?1.1:u.t===1?.95:.65;u.swing=.25;if(attack){if(ranged)arrows.push({x:u.x,y:u.y,target,damage:u.damage,f:u.f,life:1.8,orb:!!sp});else{damage(target,u.damage,u.f);target.x=clamp(target.x+dx/d*3,18,802);target.y=clamp(target.y+dy/d*3,18,802);if(u.t===3||(sp&&u.f===0)){burst(target.x,target.y,u.t===3?'#fff1b9':'#ff9a5c',8);for(let v of units)if(v!==target&&v.f!==u.f&&dist(v,target)<(u.t===3?34:34))damage(v,u.t===3?15:6,u.f)}}}else{baseDamage(base.f,u.damage*(u.t===3?2.8:sp&&u.f===3?2.55:1.5),u.f);burst(basePoint.x+(rng()-.5)*50,basePoint.y,'#fce1b2',3);if(rng()<.1)floating('−'+Math.round(u.damage*1.5),basePoint.x,basePoint.y-40,'#fff',15)}if(noiseClock<=0){sound(180+rng()*150,.035,'triangle');noiseClock=.15}}
 if(!attack&&!hitBase){let v=u.v*(u.boost>0?1.7:1)*(time>85?1.2:1)*(u.slow>0?.55:1);u.x=clamp(u.x+dx/d*v*dt,14,806);u.y=clamp(u.y+dy/d*v*dt,14,806);if(Math.abs(dx)>.5)u.face=dx>0?1:-1}
 paint(u.x,u.y,u.f,u.t===3||(sp&&u.f===3)?1:0);for(let p of powers)if(p.life>0&&dist(u,p)<25+(u.t===3?12:0)){collect(u,p);p.life=0}
 }
 for(let a of arrows){a.life-=dt;if(a.target.hp<=0){a.life=0;continue}let dx=a.target.x-a.x,dy=a.target.y-a.y,d=Math.hypot(dx,dy);a.angle=Math.atan2(dy,dx);if(d<12){damage(a.target,a.damage,a.f);if(a.orb)a.target.slow=2;burst(a.x,a.y,C[a.f],3);a.life=0}else{a.x+=dx/d*320*dt;a.y+=dy/d*320*dt}}arrows=arrows.filter(a=>a.life>0);units=units.filter(u=>u.hp>0);effects(dt);
-if(time>100&&Math.floor((time-dt)/10)!==Math.floor(time/10)&&time<150)announce('决战风暴 · 城堡持续失血','#f7b56b','领土越少，风暴侵蚀越强');
+if(time>STORM&&Math.floor((time-dt)/10)!==Math.floor(time/10)&&time<STORM+50)announce('决战风暴 · 城堡持续失血','#f7b56b','领土越少，风暴侵蚀越强');
 units=units.filter(u=>u.hp>0&&teams[u.f].alive);census();alive=teams.filter(t=>t.alive);if(alive.length<=1){winner=alive.length?alive[0].f:teams.reduce((a,b)=>a.land>b.land?a:b).f;mode='win';winClock=0;announce(NAME[winner]+'方夺冠！',C[winner],'这一次，你押对了吗？');sound(880,.6,'triangle');for(let i=0;i<8;i++)burst(rng()*820,rng()*820,C[winner],20,2)}
 }
 function effects(dt){shake=Math.max(0,shake-dt*25);for(let p of particles){p.life-=dt;p.x+=p.vx*dt;p.y+=p.vy*dt;p.vy+=95*dt;p.vx*=1-dt*2}particles=particles.filter(p=>p.life>0);for(let f of floats){f.life-=dt;f.y-=dt*22}floats=floats.filter(f=>f.life>0);for(let b of beams)b.life-=dt;beams=beams.filter(b=>b.life>0);if(banner)banner.life-=dt;}
@@ -177,7 +177,7 @@ for(let u of [...units].sort((a,b)=>a.y-b.y))person(u);
 for(let a of arrows){ctx.save();ctx.translate(a.x,a.y);ctx.rotate(a.angle||0);if(a.orb){circle(ctx,0,0,5,'#8fe0ff','#ffffff')}else{line(-9,0,8,0,'#4c5a54',2);line(8,0,3,-4,'#f5f3d9',2);line(8,0,3,4,'#f5f3d9',2)}ctx.restore()}
 for(let p of particles){ctx.globalAlpha=clamp(p.life*2,0,1);circle(ctx,p.x,p.y,p.r*p.life,p.c)}ctx.globalAlpha=1;
 for(let f of floats){if(f.panel)continue;ctx.globalAlpha=Math.min(1,f.life*2);text(f.s,f.x,f.y,f.size,f.c,'center',900)}ctx.globalAlpha=1;
-if(time>100&&mode==='battle'){ctx.lineWidth=10;ctx.strokeStyle='#ec926f'+Math.floor((.3+.1*Math.sin(time*3))*255).toString(16).padStart(2,'0');ctx.strokeRect(4,4,812,812)}ctx.restore();
+if(time>STORM&&mode==='battle'){ctx.lineWidth=10;ctx.strokeStyle='#ec926f'+Math.floor((.3+.1*Math.sin(time*3))*255).toString(16).padStart(2,'0');ctx.strokeRect(4,4,812,812)}ctx.restore();
 drawBanner();overlay();if(paused){rr(ctx,330,380,160,60,14,'#122b3dee','#9ab8bf');text('Ⅱ 已暂停',410,418,24,'#e8dcc0','center')}ctx.restore();}
 // ---- Marble panel (local 560x960) ----
 function binRange(divs,i){let xs=[0,...divs,LW];return[xs[i],xs[i+1]]}
@@ -190,14 +190,14 @@ let n=divs.length+1;for(let i=0;i<n;i++){let [a,b]=binRange(divs,i);let lab,col;
 for(let d of divs){rr(ctx,d-1.5,BIN_Y,3,BIN_B-BIN_Y,1,'#9fb6c2');circle(ctx,d,BIN_Y,3,'#cfe0e8')}
 if(m===0&&t.capFlash>0){ctx.globalAlpha=Math.min(1,t.capFlash);rr(ctx,8,BIN_Y-34,LW-16,22,6,'#3b2c10ee','#ffe6a3');text('已达上限 '+t.cap+' 颗',LW/2,BIN_Y-18,12,'#ffe6a3','center',900)}
 ctx.restore()}
-function drawBall(x,y,f,alpha=1,glow=false){ctx.globalAlpha=alpha;if(glow)circle(ctx,x,y,BR+5,C[f]+'55');circle(ctx,x,y,BR,C[f],'#ffffffaa');circle(ctx,x-2,y-2,2,'#ffffffcc');ctx.globalAlpha=1}
+function drawBall(x,y,f,alpha=1,glow=false,cool=false){ctx.globalAlpha=alpha;if(glow)circle(ctx,x,y,BR+5,C[f]+'55');if(cool){ctx.globalAlpha=alpha*.45;circle(ctx,x,y,BR,C[f]);ctx.globalAlpha=alpha;ctx.lineWidth=2;circle(ctx,x,y,BR+1.5,null,'#dfe9ee');ctx.lineWidth=1;return}circle(ctx,x,y,BR,C[f],'#ffffffaa');circle(ctx,x-2,y-2,2,'#ffffffcc');ctx.globalAlpha=1}
 function drawPanel(){ctx.save();ctx.translate(P.x,P.y);ctx.scale(P.k,P.k);rr(ctx,0,0,560,960,16,'#132433','#304857');
 text('① 第一弹珠模块',14,30,19,'#f2ecd4','left',900);text('落「复制」→ 变两颗 · 落「发射」→ 进入第二模块',546,29,11,'#8aa7b3','right');
 text('② 第二弹珠模块 · 兵种落点',14,MOD_Y[1]-38,19,'#f2ecd4','left',900);text('落哪个区，战场就出哪个兵 → 弹珠回起点',546,MOD_Y[1]-39,11,'#8aa7b3','right');
 for(let m=0;m<2;m++)for(let f=0;f<4;f++)drawLane(f,m);
 // hoppers (waiting balls)
-for(let f=0;f<4;f++){let w=balls.filter(b=>b.f===f&&b.st==='wait'),n=w.length,sp=Math.min(13,(LW-14)/Math.max(1,n));w.forEach((b,i)=>drawBall(laneX(f)+7+BR+i*sp,MOD_Y[0]-16,f,1,b.flash>0))}
-for(let b of balls){if(b.st==='wait')continue;if(b.trail)b.trail.forEach((p,i)=>{ctx.globalAlpha=i/16;circle(ctx,p[0],p[1],BR*.8,C[b.f])});ctx.globalAlpha=1;let [x,y]=panelPos(b);drawBall(x,y,b.f,1,b.st==='move'||b.flash>0)}
+for(let f=0;f<4;f++){let w=balls.filter(b=>b.f===f&&b.st==='wait'),n=w.length,sp=Math.min(13,(LW-14)/Math.max(1,n));w.forEach((b,i)=>drawBall(laneX(f)+7+BR+i*sp,MOD_Y[0]-16,f,1,b.flash>0,b.cool))}
+for(let b of balls){if(b.st==='wait')continue;if(b.trail)b.trail.forEach((p,i)=>{ctx.globalAlpha=i/16;circle(ctx,p[0],p[1],BR*.8,C[b.f])});ctx.globalAlpha=1;let [x,y]=panelPos(b);drawBall(x,y,b.f,1,b.st==='move'||b.flash>0,b.cool)}
 for(let f of floats){if(!f.panel)continue;ctx.globalAlpha=Math.min(1,f.life*2);text(f.s,f.x,f.y,f.size,f.c,'center',900)}ctx.globalAlpha=1;
 // per-faction stats under the lanes
 for(let f=0;f<4;f++){let t=teams[f],x=laneX(f),y=MOD_Y[1]+BIN_B+12,nb=balls.filter(b=>b.f===f).length;ctx.globalAlpha=t.alive?1:.4;rr(ctx,x,y,LW,64,8,'#0d1c28',C[f]+'88');drawBall(x+12,y+14,f);text(nb+'/'+t.cap+' 颗',x+22,y+19,13,C[f],'left',900);text(t.rankBonus?'+'+Math.round(t.rankBonus*100)+'%':'±0',x+LW-6,y+19,12,t.rankBonus?'#ffe3a3':'#7f97a3','right',900);text('兵种 '+(t.lastType<0?'—':unitName(f,t.lastType)),x+8,y+38,12,'#cfdfdd');text('出兵 '+(t.spawnLog.length*3)+'/分',x+8,y+56,12,'#9eb4bf');text('×'+mult(f).toFixed(2),x+LW-6,y+56,12,'#e8d5a1','right',700);ctx.globalAlpha=1}
@@ -205,16 +205,16 @@ ctx.restore()}
 function drawBeams(){for(let b of beams){let a=Math.min(1,b.life/.75);let x1=P.x+b.x*P.k,y1=P.y+b.y*P.k,x2=B.x+b.mx*B.k,y2=B.y+b.my*B.k;ctx.save();ctx.globalAlpha=a*.85;ctx.strokeStyle=C[b.f];ctx.lineWidth=3;ctx.setLineDash([10,8]);ctx.lineDashOffset=-b.life*80;ctx.beginPath();ctx.moveTo(x1,y1);ctx.quadraticCurveTo((x1+x2)/2,Math.min(y1,y2)-80,x2,y2);ctx.stroke();ctx.restore();circle(ctx,x2,y2,10*(1.4-a)+4,null,C[b.f])}}
 function drawHeader(x,y,w){ctx.save();ctx.translate(x,y);text('FOUR KINGDOMS · MARBLE WAR',2,22,13,'#87a5b4','left',700);text('四色领地大战',0,66,36,'#f2ecd4','left',900);text('弹珠出兵版',232,64,18,'#8ba5ad');rr(ctx,w-370,28,190,46,12,'#203342','#405866');circle(ctx,w-350,51,5,mode==='battle'?'#7cdbb0':'#f2cf77');text(mode==='win'?'本局已结束':mode==='intro'?'集结倒计时':'全自动 · 观战中',w-336,57,15,'#cfdfdd');let mm=String(Math.floor(time/60)).padStart(2,'0'),ss=String(Math.floor(time%60)).padStart(2,'0');text(mm+':'+ss,w,66,35,'#f1dab0','right',700);ctx.restore()}
 // ---- Right HUD: faction cards (local 515 x 660) ----
-function drawCards(){text('BATTLE OBSERVATORY',2,22,13,'#7e9ba9');text('你押哪个颜色？',0,58,28,'#f2ecd4','left',900);text(mode==='win'?'王者已诞生 · 下一局再战':time>100?'决战风暴正在侵蚀城堡':'弹珠越多、循环越快，出兵越快',0,82,14,time>100?'#f2ad7c':'#8aa7b3');
+function drawCards(){text('BATTLE OBSERVATORY',2,22,13,'#7e9ba9');text('你押哪个颜色？',0,58,28,'#f2ecd4','left',900);text(mode==='win'?'王者已诞生 · 下一局再战':time>STORM?'决战风暴正在侵蚀城堡':'8:00 决战风暴 · 10:00 领土裁决',0,82,14,time>100?'#f2ad7c':'#8aa7b3');
 for(let f=0;f<4;f++){let t=teams[f],y=94+f*142,nb=balls.filter(b=>b.f===f).length,m=mult(f);ctx.globalAlpha=t.alive?1:.45;rr(ctx,0,y,515,132,14,'#1a2b3b',cheer===f?C[f]:'#304857');if(cheer===f){ctx.lineWidth=3;rr(ctx,0,y,515,132,14,null,C[f]);ctx.lineWidth=1}rr(ctx,0,y,6,132,[14,0,0,14],C[f]);person({x:34,y:y+58,f,t:4,phase:time*3,face:1,hp:1,max:1,hit:0,swing:0,boost:0,shield:0,slow:0},true);
 text(NAME[f]+'方 · '+LEGION[f],62,y+27,18,C[f],'left',900);text(!t.alive?'已出局':('第'+t.rank+'名'+(t.tie?'(并列)':'')),503,y+26,14,t.alive&&t.rank===1?'#e8d5a1':'#a5b4b8','right',700);
 text((t.land/N/N*100).toFixed(1)+'%',62,y+60,25,'#e5ece8','left',800);text('兵力 '+t.count+' · 击败 '+t.kills+' · 城堡 '+Math.ceil(t.hp/t.max*100)+'%',170,y+57,14,'#9eb4bf');
 text('弹珠 '+nb+'/'+t.cap+'   基础 1.00×   排名 +'+Math.round(t.rankBonus*100)+'%   临时 +'+Math.round(t.temp*100)+'%   最终 '+m.toFixed(2)+'×',62,y+84,13,'#cfdcda');
-text('出兵 '+(t.spawnLog.length*3)+'/分 · 当前 '+(t.lastType<0?'—':unitName(f,t.lastType))+' · 特殊：'+SP[f].name+(t.plazaBonus?' · 广场✓':''),62,y+106,13,'#9cb2bb');
+text('出兵 '+(t.spawnLog.length*3)+'/分 · 当前 '+(t.lastType<0?'—':unitName(f,t.lastType))+' · 特殊：'+SP[f].name+(t.plazaBonus?' · 广场✓':'')+' · 里程碑 '+(MILES.find(m=>m>t.spawned)?t.spawned+'/'+MILES.find(m=>m>t.spawned):'已满'),62,y+106,13,'#9cb2bb');
 rr(ctx,62,y+116,441,6,3,'#0d1c28');rr(ctx,62,y+116,441*t.land/N/N,6,3,C[f]);ctx.globalAlpha=1}}
 function drawFeed(h=122){rr(ctx,0,0,515,h,14,'#142535','#304857');text('战场快讯',18,28,16,'#e7d6b2');text('HIGHLIGHTS',497,27,11,'#657f90','right');if(!feed.length)text('四支军团集结完毕，弹珠即将发射…',18,62,15,'#8ea9b6');feed.slice(0,Math.floor((h-36)/24)).forEach((v,i)=>{circle(ctx,22,50+i*24,3,v.c);text(v.s,34,55+i*24,14,v.c);text(String(Math.floor(v.t))+'s',497,55+i*24,12,'#678596','right')})}
 function drawInfo(){rr(ctx,0,0,515,92,14,'#142535','#304857');text('战场奇遇（按用途投放 · 虚线=影响范围）',18,24,13,'#cfdcda');let labels=['疾风·中心','圣盾·危城旁','炸弹·仅交界','王冠·前线'];for(let i=0;i<4;i++){let x=34+i*124;powerIcon(i,x,56,14);text(labels[i],x+19,61,12,'#9cb2bb')}text('排名加成：第一 +10% · 最后 +5% · 同面积并列共享名次',18,86,11,'#7893a4')}
-function drawRules(){rr(ctx,0,0,487,300,14,'#142535','#304857');let L=['玩法规则','· 每方开局 2 颗弹珠，自动发射','· 第一模块：落「复制」变两颗，落「发射」进第二模块','· 第二模块：落点决定兵种，出兵后弹珠回起点','· 单方弹珠上限 '+BALL_CAP+' 颗（广场奖励 +1）','· 中心广场占 >30% 永久 +1 弹珠，每局一次','· 第一名 +10%、最后一名 +5% 弹珠速度','· 并列共享名次；全部并列不加成','· 疾风临时 +15%，上限 30%，每秒 −2%'];L.forEach((s,i)=>text(s,16,30+i*31,i?14:17,i?'#9cb2bb':'#e7d6b2','left',i?500:800))}
+function drawRules(){rr(ctx,0,0,487,300,14,'#142535','#304857');let L=['玩法规则','· 每方开局 2 颗弹珠，自动发射','· 第一模块：落「复制」变两颗，落「发射」进第二模块','· 第二模块：落点决定兵种，出兵后弹珠回起点','· 复制上限 '+BALL_CAP+' 颗；广场/里程碑奖励各 +1','· 复制后两颗都冷却，完成一次出兵才可再复制','· 第一名 +10%、最后一名 +5% 弹珠速度','· 出兵 20/50/90 各奖励 1 颗 · 广场>30% +1','· 8:00 决战风暴 · 10:00 领土裁决'];L.forEach((s,i)=>text(s,16,30+i*31,i?14:17,i?'#9cb2bb':'#e7d6b2','left',i?500:800))}
 function drawBanner(){if(!banner||banner.life<=0||mode!=='battle')return;let a=Math.min(1,banner.life*2,(3.2-banner.life)*4);ctx.save();ctx.globalAlpha=Math.max(0,a);let x=115,y=27;rr(ctx,x,y,590,76,12,'#152b3bea',banner.c);text(banner.s,x+295,y+32,25,banner.c,'center',900);text(banner.sub,x+295,y+58,13,'#c3d1cc','center');ctx.restore()}
 function overlay(){if(mode!=='intro'&&mode!=='win')return;ctx.save();ctx.fillStyle='#0a1a28bb';ctx.fillRect(0,0,820,820);let cx=410,cy=410;rr(ctx,cx-293,cy-200,586,400,24,'#172d3cf5',mode==='win'?C[winner]:'#849c9c');if(mode==='intro'){text('THE COLOR CROWN',cx,cy-151,15,'#b3a586','center');text('四王之争',cx,cy-94,46,'#f3e6bc','center',900);text('你押哪个颜色？',cx,cy-50,23,'#c3d5d8','center');for(let f=0;f<4;f++){person({x:cx-180+f*120,y:cy+24,f,t:4,phase:0,face:1,hp:1,max:1,hit:0,swing:0,boost:0,shield:0,slow:0},true);text(NAME[f]+'方 · '+SP[f].short,cx-180+f*120,cy+66,16,C[f],'center')}text(Math.max(1,Math.ceil(intro))+' 秒后自动开战',cx,cy+118,24,'#f0d186','center');text('弹珠全自动 · 点击画面立即开战',cx,cy+159,14,'#8eaab8','center')}
 else{powerIcon(3,cx,cy-139,28);text(NAME[winner]+'方夺冠！',cx,cy-71,47,C[winner],'center',900);text(['赤焰不灭，征服全场。','潮起之时，无人可挡。','万物生长，终成王国。','破晓之光，照耀疆土。'][winner],cx,cy-26,20,'#e1decb','center');text('用时 '+Math.floor(time)+' 秒  ·  击败 '+teams[winner].kills+'  ·  领土 '+(teams[winner].land/N/N*100).toFixed(1)+'%',cx,cy+25,17,'#a7bfca','center');text(cheer<0?'这一次，你押对了吗？':cheer===winner?'你支持的军团赢了！':'下一局，能否逆风翻盘？',cx,cy+76,25,'#f3d994','center');text(auto?Math.max(0,Math.ceil(10-winClock))+' 秒后开启新一轮 · 点击立即重开':'点击立即重开 · 自动连战已关闭',cx,cy+139,16,'#8eaab8','center')}
@@ -232,8 +232,8 @@ document.getElementById('pause').onclick=togglePause;document.getElementById('sp
 canvas.onclick=e=>{let rect=canvas.getBoundingClientRect(),x=(e.clientX-rect.left)/rect.width*W,y=(e.clientY-rect.top)/rect.height*H;let lx=(x-HUD.x)/HUD.k,ly=(y-HUD.y)/HUD.k;if(lx>0&&lx<515&&ly>94&&ly<94+4*142){cheer=clamp(Math.floor((ly-94)/142),0,3);return}if(mode==='intro'){mode='battle';announce('四王之争 · 开战！','#f5ce64','选择你支持的军团，见证最后的王者')}else if(mode==='win')reset()};
 addEventListener('resize',layout);
 // Read-only state plus deterministic stepping for automated QA / local demonstrations.
-window.demo={getState:()=>({mode,time,winner,seed:state,paused,speed,teams:teams.map(t=>({f:t.f,alive:t.alive,hp:t.hp,land:t.land,count:t.count,kills:t.kills,cap:t.cap,temp:t.temp,rankBonus:t.rankBonus,rank:t.rank,mult:mult(t.f),balls:balls.filter(b=>b.f===t.f).length,spawned:t.spawned,dups:t.dups,launches:t.launches,plazaBonus:t.plazaBonus,plaza:t.plaza,byType:[...t.byType]})),units:units.length,powers:powers.length}),
+window.demo={getState:()=>({mode,time,winner,seed:state,paused,speed,teams:teams.map(t=>({f:t.f,alive:t.alive,hp:t.hp,land:t.land,count:t.count,kills:t.kills,cap:t.cap,miles:t.miles,coolHits:t.coolHits,cooling:balls.filter(b=>b.f===t.f&&b.cool).length,temp:t.temp,rankBonus:t.rankBonus,rank:t.rank,mult:mult(t.f),balls:balls.filter(b=>b.f===t.f).length,spawned:t.spawned,dups:t.dups,launches:t.launches,plazaBonus:t.plazaBonus,plaza:t.plaza,byType:[...t.byType]})),units:units.length,powers:powers.length}),
 reset:s=>reset(s),start:()=>{mode='battle'},step:(seconds)=>{for(let i=0;i<Math.floor(seconds*30);i++)update(1/30);draw()},stepNoDraw:(seconds)=>{for(let i=0;i<Math.floor(seconds*30);i++)update(1/30)},setAuto:v=>auto=v,
-debug:{events:()=>events,bombLog:()=>bombLog,balls:()=>balls.map(b=>({f:b.f,st:b.st,x:b.x,y:b.y,px:b.px,py:b.py,mod:b.mod})),tiles:()=>tiles,PLAZA,M1_DIV,M2_DIV,M2_TYPES,BALL_CAP,SP,powers:()=>powers.map(p=>({...p})),isBorderTile:i=>isBorderTile(i),units:()=>units.map(u=>({f:u.f,t:u.t,hp:u.hp})),layout:()=>({W,H,P,B,HUD,portrait}),addBalls:(f,n)=>{for(let i=0;i<n;i++)balls.push(newBall(f))}}};
+debug:{events:()=>events,bombLog:()=>bombLog,balls:()=>balls.map(b=>({cool:!!b.cool,f:b.f,st:b.st,x:b.x,y:b.y,px:b.px,py:b.py,mod:b.mod})),tiles:()=>tiles,PLAZA,M1_DIV,M2_DIV,M2_TYPES,BALL_CAP,SP,powers:()=>powers.map(p=>({...p})),isBorderTile:i=>isBorderTile(i),units:()=>units.map(u=>({f:u.f,t:u.t,hp:u.hp})),setNoBaseDamage:v=>noBaseDamage=v,layout:()=>({W,H,P,B,HUD,portrait}),addBalls:(f,n)=>{for(let i=0;i<n;i++)balls.push(newBall(f))}}};
 layout();reset();requestAnimationFrame(frame);
 </script></body></html>
