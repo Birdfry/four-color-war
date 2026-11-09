@@ -24,7 +24,7 @@
 - AI 对未拾取的场上技能提高 35% 基础寻取权重（1.35×），仍按距离、敌方压力与技能剩余时间挑选；已拾取或过期技能会移出候选。回防、撤退与接敌决策优先，不会被寻技覆盖。
 - 每 10 局进行一次 AI 进化：选出这 10 局获胜次数最多的 AI 为冠军，并把冠军的学习策略复制给随机选出的 3 个不同阵营；剩下的阵营保留自己的学习记录，基于现有策略生成带有权重突变和新战术风格的实验 AI，继续探索。胜场并列时按这 10 局累计表现分决胜；表现分仍相同时，按红、蓝、绿、黄的固定顺序决胜。每轮结束后重新累计 10 局；进化只复制策略，不改变各阵营的专属单位和规则。
 - 右侧「四国 AI 学习档案」显示各方策略；桌面展示路线权重、战术代码和进化记录，手机简化为更易读的重点摘要。画布文字会按面板宽度自适配，战报和规则说明保留在各自区块内。
-- 游戏只播放领先阵营的英文人声歌曲，不播放弹珠碰撞、战斗、环境、胜利或任何其他音效。红方使用 “Subconscious Battle”、蓝方 “Fight the Sea”、绿方 “Water in the Creek”、黄方 “Days Under The Sun”，四方各用不同曲目。并列领先时保持当前曲目；新阵营成为唯一领队并持续领先 2.5 秒后切换，并用 3 秒交叉淡化。曲目按需加载；浏览器会在首次用户交互后解锁播放，工具栏的音乐开关和独立音量只控制歌曲。
+- 游戏只播放当前唯一领队阵营的英文歌曲，不播放弹珠碰撞、战斗、环境、胜利或其他音效。四方歌曲各有不同主创，逐曲来源与授权列于“Music credits”。并列领地时保持当前歌曲；新阵营唯一领先并稳定 2.5 秒后自动切换，采用 3 秒交叉淡化。首次普通页面交互会解锁音频，之后歌曲按需加载，领地变化会自动播放新歌，无需再手动点音乐开关。音乐开关与音量控制仍保留。
 
 - 可在 AI 学习档案面板点击「重置 AI 学习」，确认后恢复四方默认策略并清除 AI 战绩与进化历史；不会重置当前战局、游戏控制或其他本机设置。
 - 远程兵会依照射程、生命值和敌情拉扯；城堡受威胁或受损时会动态增加回防兵力，低血量部队会向己方安全方向撤退并尝试在己方领土恢复。
@@ -32,11 +32,11 @@
 
 ## Music credits
 
-The four full vocal songs are embedded as local game assets under their source-published **CC BY 3.0** license. They are re-encoded to 128 kbps MP3 for browser delivery; the music itself is otherwise unedited. CC BY 3.0 permits sharing and adaptation, including commercial use, provided appropriate credit and a link to the license are given. Source pages and attribution:
+All four embedded tracks have individual ccMixter upload pages that label the track **Creative Commons Attribution 3.0 (CC BY 3.0)**. CC BY 3.0 permits copying, redistribution and commercial use, including bundling and playback in a game, provided the attribution and license link are retained. The ccMixter site-wide footer applies to site text and images; each linked audio upload page separately states the license for that track. The source recordings were re-encoded to 128 kbps MP3 for browser delivery; no other musical edits were made. Artist-page source credits:
 
-- Red — [“Subconscious Battle” by Thornwill](https://www.jamendo.com/track/615569).
-- Blue — [“Fight the Sea” by Josh Woodward](https://www.jamendo.com/track/582245).
-- Green — [“Water in the Creek” by Josh Woodward](https://www.jamendo.com/track/959592).
-- Yellow — [“Days Under The Sun” by The Absolute Sky](https://www.jamendo.com/track/1216737).
+- **Red — “Ol’ Man Clothes” by Jeris** (ccMixter account VJ_Memes), with contributors spinningmerkaba, Morusque, CSoul and Alex Beroza. [Track page](https://ccmixter.org/files/VJ_Memes/33403) · [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/).
+- **Blue — “Probably Shouldn’t” by Stefan Kartenberg**, featuring Mr_Yesterday on vocals; the English lyrics are by D. A. Ayer. [Full blues-rock remix page](https://ccmixter.org/files/JeffSpeed68/55527) · [original vocal/lyrics page](https://ccmixter.org/files/Mr_Yesterday/55515) · [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/).
+- **Green — “Freedom to Share” by gurdonark.** The embedded file is the upload’s “vox and instrument” version. [Track page](https://ccmixter.org/files/gurdonark/27900) · [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/).
+- **Yellow — “Slippin’ & Slidin’” by unreal_dm**, featuring SackJo22 on vocals. [Full country/blues remix page](https://ccmixter.org/files/unreal_dm/30468) · [original vocal/lyrics page](https://ccmixter.org/files/SackJo22/30330) · [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/).
 
-Each track is licensed under [Creative Commons Attribution 3.0 Unported (CC BY 3.0)](https://creativecommons.org/licenses/by/3.0/). The license grants sharing/adaptation rights but gives no warranty about other rights; the game retains the artists, source links, and license credits and does not claim ownership of the music.
+The four primary track authors are Jeris, Stefan Kartenberg, gurdonark and unreal_dm. Their individual source pages provide English lyrics or link to the source vocal/lyrics pages named above. Four Color War does not claim ownership of these songs.
