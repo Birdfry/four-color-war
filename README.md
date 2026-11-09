@@ -24,7 +24,7 @@
 - AI 对未拾取的场上技能提高 35% 基础寻取权重（1.35×），仍按距离、敌方压力与技能剩余时间挑选；已拾取或过期技能会移出候选。回防、撤退与接敌决策优先，不会被寻技覆盖。
 - 每 10 局进行一次 AI 进化：选出这 10 局获胜次数最多的 AI 为冠军，并把冠军的学习策略复制给随机选出的 3 个不同阵营；剩下的阵营保留自己的学习记录，基于现有策略生成带有权重突变和新战术风格的实验 AI，继续探索。胜场并列时按这 10 局累计表现分决胜；表现分仍相同时，按红、蓝、绿、黄的固定顺序决胜。每轮结束后重新累计 10 局；进化只复制策略，不改变各阵营的专属单位和规则。
 - 右侧「四国 AI 学习档案」显示各方策略；桌面展示路线权重、战术代码和进化记录，手机简化为更易读的重点摘要。画布文字会按面板宽度自适配，战报和规则说明保留在各自区块内。
-- 游戏只播放领先方主题配乐，不播放弹珠碰撞、战斗、环境或胜利音效。红方使用 “Brave Fight”、蓝方 “Follow the road”、绿方 “Fountain of Life”、黄方 “An Epic Journey”。并列时保持当前曲目；只有领先超过全图 2% 且持续 2.5 秒才切换，并用 3 秒交叉淡化。浏览器会在首次用户交互后解锁播放；工具栏的配乐开关和独立音量只控制主题音乐。
+- 游戏只播放领先阵营的英文人声歌曲，不播放弹珠碰撞、战斗、环境、胜利或任何其他音效。红方使用 “Subconscious Battle”、蓝方 “Fight the Sea”、绿方 “Water in the Creek”、黄方 “Days Under The Sun”，四方各用不同曲目。并列领先时保持当前曲目；新阵营成为唯一领队并持续领先 2.5 秒后切换，并用 3 秒交叉淡化。曲目按需加载；浏览器会在首次用户交互后解锁播放，工具栏的音乐开关和独立音量只控制歌曲。
 
 - 可在 AI 学习档案面板点击「重置 AI 学习」，确认后恢复四方默认策略并清除 AI 战绩与进化历史；不会重置当前战局、游戏控制或其他本机设置。
 - 远程兵会依照射程、生命值和敌情拉扯；城堡受威胁或受损时会动态增加回防兵力，低血量部队会向己方安全方向撤退并尝试在己方领土恢复。
@@ -32,4 +32,11 @@
 
 ## Music credits
 
-“Music by SunixMuz, licensed under CC BY 4.0.” The four instrumental tracks are from the free version of [SunixDev’s Epic/Fantasy/Orchestral Music Pack](https://sunixdev.itch.io/epic-fantasy-orchestral-music-pack), used under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). Track credit/channel: [SunixMuz](https://www.youtube.com/@SunixMuz). The files are embedded as game assets, not sold or redistributed as standalone music.
+The four full vocal songs are embedded as local game assets under their source-published **CC BY 3.0** license. They are re-encoded to 128 kbps MP3 for browser delivery; the music itself is otherwise unedited. CC BY 3.0 permits sharing and adaptation, including commercial use, provided appropriate credit and a link to the license are given. Source pages and attribution:
+
+- Red — [“Subconscious Battle” by Thornwill](https://www.jamendo.com/track/615569).
+- Blue — [“Fight the Sea” by Josh Woodward](https://www.jamendo.com/track/582245).
+- Green — [“Water in the Creek” by Josh Woodward](https://www.jamendo.com/track/959592).
+- Yellow — [“Days Under The Sun” by The Absolute Sky](https://www.jamendo.com/track/1216737).
+
+Each track is licensed under [Creative Commons Attribution 3.0 Unported (CC BY 3.0)](https://creativecommons.org/licenses/by/3.0/). The license grants sharing/adaptation rights but gives no warranty about other rights; the game retains the artists, source links, and license credits and does not claim ownership of the music.
