@@ -30,6 +30,36 @@
 - 远程兵会依照射程、生命值和敌情拉扯；城堡受威胁或受损时会动态增加回防兵力，低血量部队会向己方安全方向撤退并尝试在己方领土恢复。
 - 国王塔周围半径 7 格是本方永久保护区，敌军经过或技能染色都不能改变颜色。炸弹只在不同颜色领地交界处出现；加速在中心，圣盾在危急城堡附近，王冠在前线。
 
+## 外部 AI 策略插件
+
+其他策略代码可通过运行时 API `window.FourColorWarAI` 接入；游戏没有策略粘贴或导入界面。先注册策略对象，再把它分配给阵营（0 红、1 蓝、2 绿、3 黄）。例如：
+
+```js
+window.FourColorWarAI.register('example', {
+  name: 'Example strategy',
+  apiVersion: '1.0.0',
+  decide(ctx) {
+    const enemy = ctx.enemies[0];
+    const nearby = ctx.nearbyEnemies[0];
+    return {
+      mode: ctx.signals.homePressure > 0.35 ? 'defend' : 'attack',
+      goal: enemy ? { x: [78, 742, 78, 742][enemy.f], y: [78, 78, 742, 742][enemy.f] } : { x: 410, y: 410 },
+      goalKind: enemy ? 'tower' : 'plaza',
+      targetFaction: enemy?.f,
+      targetId: nearby?.id,
+      routeStyle: 'direct',
+      refreshAfter: 0.75
+    };
+  },
+  onMatchEnd(result) { /* 可选 */ }
+});
+window.FourColorWarAI.setFactionStrategy(1, 'example');
+```
+
+`decide(ctx)` 是同步函数，返回 0–820 世界坐标中的 `goal`；还可指定 `mode`（`attack`、`kite`、`defend`、`retreat`、`skill`）、`goalKind`（`tower`、`plaza`、`power`、`defend`、`retreat`、`kite`、`patrol`）、敌方 `targetFaction`、从 `ctx.nearbyEnemies` 中选择的近身敌军 `targetId`、路线风格 `routeStyle`（`direct`/`flank`）及重新决策间隔 `refreshAfter`（0.25–5 秒）。只读上下文提供单位、阵营/敌方/盟友概况、可检测到的附近敌军、技能点、地图格查询，以及该阵营当前学习到的策略权重。可选的 `onMatchEnd(result)` 会在赛后调用。插件返回无效结果或抛出异常时，该单位会回退到内置策略；每次注册最多记录一次插件错误。
+
+用 `window.FourColorWarAI.setFactionStrategy(1, null)` 恢复该阵营的内置策略；`list()` 可查看注册项，`unregister('example')` 可移除插件。注册和分配只在当前页面运行期间有效，需由插件脚本在每次加载时执行。插件以普通页面 JavaScript 运行，并非安全沙箱，只接入可信代码。即使阵营使用插件，游戏原有奖励回馈、本机持久化学习档案和每十局进化仍会继续运行。
+
 ## Music credits
 
 All four embedded tracks have individual ccMixter upload pages that label the track **Creative Commons Attribution 3.0 (CC BY 3.0)**. CC BY 3.0 permits copying, redistribution and commercial use, including bundling and playback in a game, provided the attribution and license link are retained. The ccMixter site-wide footer applies to site text and images; each linked audio upload page separately states the license for that track. The source recordings were re-encoded to 128 kbps MP3 for browser delivery; no other musical edits were made. Artist-page source credits:
