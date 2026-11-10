@@ -63,6 +63,12 @@ window.FourColorWarAI.setFactionStrategy(1, 'example');
 
 用 `window.FourColorWarAI.setFactionStrategy(1, null)` 恢复该阵营的内置策略；`list()` 可查看注册项，`unregister('example')` 可移除插件。注册和分配只在当前页面运行期间有效，需由插件脚本在每次加载时执行。插件以普通页面 JavaScript 运行，并非安全沙箱，只接入可信代码。即使阵营使用插件，游戏原有奖励回馈、本机持久化学习档案和每十局进化仍会继续运行。
 
+### 内置黄方策略
+
+页面加载时会自动加载 `yellow-ai.js`，并通过上述插件 API 仅分配给黄方（阵营 3）。策略会优先争取中心广场；附件的决策容差为 30% 加 5 个百分点，而游戏在占领超过 30% 时即发放一次性奖励，插件会在观察到越线后将广场锁定为已完成。随后按附件中的优先级寻找技能（疾风 1.0、圣盾 1.15、炸弹 1.3、巨人 1.7），最后集中攻击评估较弱且较近的敌方城堡。受伤回防/撤退、防守分兵和拉扯倾向使用黄方设定权重，并把游戏当前学习到的战术及路线权重纳入决策；奖励、惩罚、学习档案和十局进化仍由原游戏逻辑处理。黄方低血撤退基础阈值保持为 50%。其他阵营不由此插件接管。
+
+附件中能直接转为插件行为的部分（目标阵营、广场/技能/城堡目标、战术偏好）已按真实玩法实现。插件上下文不提供完整友军名单，因此无法精确挑选“全军中最近的两个”去捡技能；策略用本地短时预留把同一技能的活跃认领限制为两个，但不保证它们恰好是全局最近的两个。目标评分也拿不到全军质心，改用黄方城堡到敌方城堡的距离作稳定近似。现有插件 API 没有结盟、背叛或外交动作接口，因此不运行附件中的自定义外交逻辑；游戏既有的全局自动外交保持不变，避免改写其他阵营或绕过联盟规则。回归测试可运行 `node --test tests/yellow-ai.test.cjs`。
+
 ## Music credits
 
 All four embedded tracks have individual ccMixter upload pages that label the track **Creative Commons Attribution 3.0 (CC BY 3.0)**. CC BY 3.0 permits copying, redistribution and commercial use, including bundling and playback in a game, provided the attribution and license link are retained. The ccMixter site-wide footer applies to site text and images; each linked audio upload page separately states the license for that track. The source recordings were re-encoded to 128 kbps MP3 for browser delivery; no other musical edits were made. Artist-page source credits:
