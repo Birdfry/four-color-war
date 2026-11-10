@@ -110,6 +110,49 @@
       return targetForFaction(ctx, faction)?.id ?? null;
     }
 
+    function diplomacyStrength(team) {
+      return team.land + team.hp * 0.22 + team.count * 5;
+    }
+
+    function wantAlly(ctx, candidate) {
+      const livingOthers = ctx.factions.filter((team) => team.alive && team.f !== YELLOW);
+      if (livingOthers.length < 2) return false;
+      const weakest = livingOthers.reduce((a, b) => diplomacyStrength(a) < diplomacyStrength(b) ? a : b);
+      return livingOthers.length < 3 || weakest.f !== candidate;
+    }
+
+    function decideDiplomacy(ctx) {
+      if (!ctx || ctx.apiVersion !== API_VERSION || ctx.faction?.f !== YELLOW || !ctx.faction.alive
+        || ctx.phase !== 'battle' || ctx.time >= ctx.stormAt) return null;
+
+      const myAlliances = ctx.alliances.filter((pact) => pact.a === YELLOW || pact.b === YELLOW);
+      if (!myAlliances.length && ctx.time > 24 && ctx.aliveCount >= 3 && ctx.cooldownRemaining <= 0) {
+        let best = null;
+        let bestStrength = -1;
+        for (const team of ctx.factions) {
+          if (team.f === YELLOW || !team.alive || !ctx.canFormAlliance(team.f) || !wantAlly(ctx, team.f)) continue;
+          const bias = team.f === 1 || team.f === 2 ? 1.2 : 1;
+          const strength = diplomacyStrength(team) * bias;
+          if (strength > bestStrength) {
+            bestStrength = strength;
+            best = team.f;
+          }
+        }
+        if (best !== null && Math.random() < 0.5) return { type: 'formAlliance', targetFaction: best };
+      }
+
+      const yellow = ctx.faction;
+      for (const ally of ctx.allies) {
+        const pact = myAlliances.find((item) => (item.a === YELLOW ? item.b : item.a) === ally);
+        const partner = ctx.factions.find((team) => team.f === ally);
+        if (pact && partner?.alive && ctx.time - pact.formedAt >= 18
+          && diplomacyStrength(yellow) >= diplomacyStrength(partner) * 1.5 && partner.hp < 1300) {
+          return { type: 'betrayAlliance', targetFaction: ally };
+        }
+      }
+      return null;
+    }
+
     function releasePowerClaim(unitId) {
       state.powerClaims.delete(unitId);
     }
@@ -283,6 +326,7 @@
       version: '1.0.0',
       apiVersion: API_VERSION,
       decide,
+      decideDiplomacy,
       onMatchEnd() { resetState(); }
     };
   }

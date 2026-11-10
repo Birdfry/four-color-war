@@ -13,7 +13,9 @@ function createHarness() {
   const registrations = new Map();
   const assignments = [null, null, null, null];
   const window = {};
-  vm.runInNewContext(source, { window, console, Math, Number, String, Map, Object });
+  const math = Object.create(Math);
+  math.random = () => 0.1;
+  vm.runInNewContext(source, { window, console, Math: math, Number, String, Map, Object });
   const api = {
     apiVersion: '1.0.0',
     register(id, strategy) {
@@ -59,6 +61,29 @@ function context(overrides = {}) {
   result.learning = { ...base.learning, ...(overrides.learning || {}) };
   result.signals = { ...base.signals, ...(overrides.signals || {}) };
   return result;
+}
+
+function diplomacyContext(overrides = {}) {
+  const factions = [
+    { f: 0, alive: true, hp: 500, land: 10, count: 5 },
+    { f: 1, alive: true, hp: 1000, land: 30, count: 12 },
+    { f: 2, alive: true, hp: 1500, land: 80, count: 20 },
+    { f: 3, alive: true, hp: 2000, land: 100, count: 20 }
+  ];
+  return {
+    apiVersion: '1.0.0',
+    time: 30,
+    phase: 'battle',
+    stormAt: 480,
+    faction: factions[3],
+    factions,
+    allies: [],
+    alliances: [],
+    aliveCount: 4,
+    cooldownRemaining: 0,
+    canFormAlliance: () => true,
+    ...overrides
+  };
 }
 
 test('registers only the Yellow faction through the public plugin API', () => {
@@ -135,4 +160,57 @@ test('clears per-match strategy memory at match end', () => {
   strategy.onMatchEnd({ faction: 3, winner: 3 });
   const result = strategy.decide(context({ time: 0, plazaShare: 0.1, signals: { plazaShare: 0.1 } }));
   assert.equal(result.goalKind, 'plaza');
+});
+
+test('requests an alliance with the strongest eligible rival while sparing the weakest', () => {
+  const { strategy } = createHarness();
+  const action = strategy.decideDiplomacy(diplomacyContext());
+  assert.deepEqual(plain(action), { type: 'formAlliance', targetFaction: 2 });
+});
+
+test('uses the API eligibility check before requesting an alliance', () => {
+  const { strategy } = createHarness();
+  const action = strategy.decideDiplomacy(diplomacyContext({ canFormAlliance: (faction) => faction === 1 }));
+  assert.deepEqual(plain(action), { type: 'formAlliance', targetFaction: 1 });
+});
+
+test('does not request an alliance with fewer than two living rival factions', () => {
+  const { strategy } = createHarness();
+  assert.equal(strategy.decideDiplomacy(diplomacyContext({
+    aliveCount: 2,
+    factions: [
+      { f: 0, alive: false, hp: 0, land: 0, count: 0 },
+      { f: 1, alive: false, hp: 0, land: 0, count: 0 },
+      { f: 2, alive: true, hp: 1000, land: 30, count: 12 },
+      { f: 3, alive: true, hp: 2000, land: 100, count: 20 }
+    ]
+  })), null);
+});
+
+test('requests betrayal only for a mature alliance when Yellow overwhelmingly leads over a weak ally', () => {
+  const { strategy } = createHarness();
+  const factions = diplomacyContext().factions.map((team) => team.f === 1
+    ? { ...team, hp: 900, land: 5, count: 2 }
+    : team);
+  const action = strategy.decideDiplomacy(diplomacyContext({
+    time: 20,
+    allies: [1],
+    factions,
+    alliances: [{ a: 1, b: 3, formedAt: 1, remaining: 40 }]
+  }));
+  assert.deepEqual(plain(action), { type: 'betrayAlliance', targetFaction: 1 });
+});
+
+test('does not betray before 18 seconds or after the storm begins', () => {
+  const { strategy } = createHarness();
+  const alliance = { a: 1, b: 3, formedAt: 5, remaining: 40 };
+  const base = {
+    allies: [1],
+    alliances: [alliance],
+    factions: diplomacyContext().factions.map((team) => team.f === 1
+      ? { ...team, hp: 900, land: 5, count: 2 }
+      : team)
+  };
+  assert.equal(strategy.decideDiplomacy(diplomacyContext({ ...base, time: 22 })), null);
+  assert.equal(strategy.decideDiplomacy(diplomacyContext({ ...base, time: 480 })), null);
 });
