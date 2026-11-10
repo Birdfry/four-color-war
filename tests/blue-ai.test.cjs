@@ -12,7 +12,13 @@ const plain = (value) => JSON.parse(JSON.stringify(value));
 function createHarness() {
   const registrations = new Map();
   const assignments = [null, null, null, null];
+  const storage = new Map();
   const window = {};
+  window.localStorage = {
+    getItem(key) { return storage.has(key) ? storage.get(key) : null; },
+    setItem(key, value) { storage.set(key, String(value)); },
+    removeItem(key) { storage.delete(key); }
+  };
   const math = Object.create(Math);
   math.random = () => 0.1;
   vm.runInNewContext(source, { window, console, Math: math });
@@ -30,7 +36,7 @@ function createHarness() {
   assert.equal(window.__installFourColorWarBlueAI(api), true);
   const strategy = registrations.get('blue-tide-strategic');
   assert.ok(strategy);
-  return { strategy, assignments, window };
+  return { strategy, assignments, window, storage };
 }
 
 function strategyContext(overrides = {}) {
@@ -212,4 +218,29 @@ test('records a completed episode via onMatchEnd and safely starts a new one', (
   strategy.decide(strategyContext({ time: 20 }));
   assert.doesNotThrow(() => strategy.onMatchEnd({ apiVersion: '1.0.0', faction: 1, winner: 1, isWinner: true, time: 90 }));
   assert.ok(strategy.decide(strategyContext({ time: 0 })));
+});
+
+test('keeps BlueTide genome learning active across repeated completed matches', () => {
+  const { strategy, assignments, storage } = createHarness();
+  const initial = JSON.parse(storage.get('bluetide_v1_evolution'));
+  const originalGenomes = new Set(initial.population.map((entry) => JSON.stringify(entry.genome)));
+
+  for (let match = 0; match < 20; match++) {
+    strategy.decide(strategyContext({ time: 0 }));
+    strategy.onMatchEnd({
+      apiVersion: '1.0.0',
+      faction: 1,
+      winner: match % 2,
+      isWinner: match % 2 === 1,
+      time: 90
+    });
+  }
+
+  const learned = JSON.parse(storage.get('bluetide_v1_evolution'));
+  const episodes = JSON.parse(storage.get('bluetide_v1_episodes'));
+  assert.deepEqual(assignments, [null, 'blue-tide-strategic', null, null]);
+  assert.equal(learned.generation, initial.generation + 1, 'the plugin still advances its own genome generation');
+  assert.equal(learned.evaluations, 0, 'the completed generation starts evaluating its next population');
+  assert.ok(learned.population.some((entry) => !originalGenomes.has(JSON.stringify(entry.genome))), 'new plugin-specific parameter combinations are produced');
+  assert.equal(episodes.length, 20, 'each completed match still contributes an episode to plugin learning');
 });

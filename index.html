@@ -120,7 +120,8 @@ function trainBrains(dt,force=false){let changed=false;for(let t of teams){let a
 function matchPerformance(t,winner){return t.peak*2+t.kills*8+t.bosses*15+t.spawned*1.5+t.hp*.5+(t.f===winner?240:0)}
 function evolveBrains(){
  const cycle=evolution.completed+1,cycleWins=[...evolution.wins],ranked=teams.map(t=>({f:t.f,wins:cycleWins[t.f],score:evolution.scores[t.f]})).sort((a,b)=>b.score-a.score||b.wins-a.wins||a.f-b.f);
- const champion=ranked[0].f,championRow=ranked[0],assignment=window.FourColorWarEvolution.assignEvolutionCodes({teams,champion,cycle,random:rng,codebook:AI_CODEBOOK,codeArchetype});
+ const champion=ranked[0].f,championRow=ranked[0],protectedFactions=[1,3].map(f=>({f,code:teams[f].ai.code,codeName:teams[f].ai.codeName,strategy:AI_FACTION_STRATEGY[f]}));let assignment;
+ try{assignment=window.FourColorWarEvolution.assignEvolutionCodes({teams,champion,cycle,random:rng,codebook:AI_CODEBOOK,codeArchetype})}finally{for(let saved of protectedFactions){teams[saved.f].ai.code=saved.code;teams[saved.f].ai.codeName=saved.codeName;AI_FACTION_STRATEGY[saved.f]=saved.strategy}}
  evolution.completed=cycle;evolution.progress=0;evolution.scores=[0,0,0,0];evolution.games=[0,0,0,0];evolution.wins=[0,0,0,0];
  evolution.last={cycle,champion,championWins:championRow.wins,championScore:championRow.score,winCounts:cycleWins,experimenter:assignment.experimenter,codeRecipient:assignment.codeRecipient,recipients:[assignment.codeRecipient],code:assignment.code,archetype:assignment.archetype,championCode:assignment.championCode,tieBreak:'score-desc,wins-desc,faction-id-asc'};
  saveLearningArchive();saveEvolutionState();announce('第'+cycle+'轮AI代码进化：'+NAME[champion]+'方以'+championRow.score.toFixed(0)+'分夺得代码冠军（'+championRow.wins+'胜）；'+NAME[assignment.codeRecipient]+'方复制冠军代码，'+NAME[assignment.experimenter]+'方探索新代码 '+assignment.code+'。蓝、黄代码不变，四方学习继续。','#b5e8d3','表现分优先 · 平分按胜场，仍同分按红蓝绿黄');

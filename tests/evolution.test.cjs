@@ -19,7 +19,7 @@ function brain(code, marker) {
   return {
     code,
     codeName: codebook[codeArchetype(code)]?.name || '旧名称',
-    q: { attack: marker + 0.1, defend: marker + 0.2 },
+    q: { attack: marker + 0.1, defend: marker + 0.2, retreat: marker + 0.6 },
     routeQ: { tower: marker + 0.3, flank: marker + 0.4 },
     ctxQ: { lowHealth: { retreat: marker + 0.5 } },
     xp: 100 + marker,
@@ -99,6 +99,114 @@ test('each evolution changes only Red and Green AICodes and preserves all learni
   }
 });
 
+test('a full ten-match cycle keeps Blue/Yellow code and plugin assignments while core learning continues', () => {
+  const teams = changedAssignments().map((ai, f) => ({
+    f,
+    ai: {
+      ...ai,
+      ctxQ: { c1: { retreat: 0.3 } },
+      matchExposure: { attack: 1, retreat: 1 },
+      reward: { attack: 0, retreat: 0 },
+      exposure: { attack: 0, retreat: 0 },
+      contextUse: { c1: { retreat: 1 } },
+      contextReward: {},
+      matchRouteExposure: { tower: 1 },
+      routeReward: { tower: 0 },
+      routeExposure: { tower: 0 }
+    },
+    alive: true,
+    peak: 20,
+    kills: 3,
+    bosses: 0,
+    spawned: 5,
+    hp: 800
+  }));
+  const before = deepCopy(teams);
+  const strategies = [null, 'blue-tide-strategic', null, 'yellow-strategic'];
+  const evolution = { completed: 0, progress: 0, scores: [0, 0, 0, 0], games: [0, 0, 0, 0], wins: [0, 0, 0, 0], last: null };
+  const sandbox = {
+    teams,
+    evolution,
+    AI_MODES: ['attack', 'retreat'],
+    ROUTE_MODES: ['tower'],
+    AI_FACTION_STRATEGY: strategies,
+    AI_CODEBOOK: codebook,
+    NAME: ['红', '蓝', '绿', '黄'],
+    rng: () => 0.7,
+    codeArchetype,
+    codeStyle: (code) => codebook[codeArchetype(code)] || codebook.balanced,
+    clamp: (value, min, max) => Math.max(min, Math.min(max, value)),
+    window: { FourColorWarEvolution: { assignEvolutionCodes } },
+    DEFAULT_Q: () => ({ attack: 0, retreat: 0 }),
+    DEFAULT_ROUTE_Q: () => ({ tower: 0 }),
+    saveLearningArchive() {},
+    saveEvolutionState() {},
+    notifyAIPluginMatchEnd() {},
+    announce() {}
+  };
+  const winners = [1, 1, 1, 1, 0, 2, 3, 0, 2, 3];
+  sandbox.winners = winners;
+  const learningFunctions = ['policyFromQ', 'routePolicyFromQ', 'refreshBrain', 'trainContextMemory', 'trainBrains']
+    .map(functionSource).join('\n');
+  vm.runInNewContext(`${learningFunctions}\n${functionSource('matchPerformance')}\n${functionSource('evolveBrains')}\n${functionSource('recordMatchResult')}\nfor (let i = 0; i < 10; i++) { for (const team of teams) { team.ai.matchExposure = { attack: 1, retreat: 1 }; team.ai.matchRouteExposure = { tower: 1 }; team.ai.contextUse = { c1: { retreat: 1 } }; team.ai.contextReward = {}; } recordMatchResult(winners[i]); }`, sandbox);
+
+  assert.equal(evolution.completed, 1);
+  assert.equal(evolution.progress, 0);
+  assert.equal(evolution.last.champion, 1, 'Blue is the highest-scoring champion in this cycle');
+  for (const faction of [1, 3]) {
+    assert.equal(teams[faction].ai.code, before[faction].ai.code, `${factionNames[faction]} AICode identity is unchanged`);
+    assert.equal(teams[faction].ai.codeName, before[faction].ai.codeName, `${factionNames[faction]} AICode name is unchanged`);
+    assert.notEqual(teams[faction].ai.q.attack, before[faction].ai.q.attack, `${factionNames[faction]} reward learning continues`);
+    assert.notEqual(teams[faction].ai.routeQ.tower, before[faction].ai.routeQ.tower, `${factionNames[faction]} route learning continues`);
+    assert.notEqual(teams[faction].ai.ctxQ.c1.retreat, before[faction].ai.ctxQ.c1.retreat, `${factionNames[faction]} situation memory continues`);
+  }
+  assert.equal(strategies[1], 'blue-tide-strategic');
+  assert.equal(strategies[3], 'yellow-strategic');
+  assert.equal(teams[0].ai.code, before[1].ai.code, 'Red copies the Blue champion code');
+  assert.equal(teams[1].ai.code, before[1].ai.code, 'Blue remains unchanged even as champion');
+  assert.match(teams[evolution.last.experimenter].ai.code, /^evo-1:/);
+  assert.equal(teams[evolution.last.codeRecipient].ai.code, before[evolution.last.champion].ai.code);
+});
+
+test('the cycle boundary restores Blue/Yellow identities if a code assigner tries to mutate them', () => {
+  const teams = changedAssignments().map((ai, f) => ({ f, ai }));
+  const before = deepCopy(teams);
+  const strategies = [null, 'blue-tide-strategic', null, 'yellow-strategic'];
+  const sandbox = {
+    teams,
+    evolution: { completed: 4, progress: 10, scores: [1, 2, 3, 4], games: [10, 10, 10, 10], wins: [1, 2, 3, 4], last: null },
+    AI_FACTION_STRATEGY: strategies,
+    rng: () => 0,
+    AI_CODEBOOK: codebook,
+    codeArchetype,
+    NAME: ['红', '蓝', '绿', '黄'],
+    window: {
+      FourColorWarEvolution: {
+        assignEvolutionCodes({ teams: mutableTeams }) {
+          mutableTeams[1].ai.code = 'evo-corrupt:raider';
+          mutableTeams[1].ai.codeName = '错误蓝码';
+          mutableTeams[3].ai.code = 'evo-corrupt:siege';
+          mutableTeams[3].ai.codeName = '错误黄码';
+          strategies[1] = 'wrong-blue-plugin';
+          strategies[3] = 'wrong-yellow-plugin';
+          return { experimenter: 0, codeRecipient: 2, championCode: 'raider', code: 'evo-5:siege', archetype: 'siege' };
+        }
+      }
+    },
+    saveLearningArchive() {},
+    saveEvolutionState() {},
+    announce() {}
+  };
+  vm.runInNewContext(`${functionSource('evolveBrains')}\nevolveBrains()`, sandbox);
+
+  for (const faction of [1, 3]) {
+    assert.equal(teams[faction].ai.code, before[faction].ai.code);
+    assert.equal(teams[faction].ai.codeName, before[faction].ai.codeName);
+  }
+  assert.equal(strategies[1], 'blue-tide-strategic');
+  assert.equal(strategies[3], 'yellow-strategic');
+});
+
 test('the integrated game evolution uses the cycle leader and picks only Red or Green to explore', () => {
   const teams = changedAssignments().map((ai, f) => ({ f, ai }));
   const evolution = {
@@ -113,6 +221,7 @@ test('the integrated game evolution uses the cycle leader and picks only Red or 
   const sandbox = {
     teams,
     evolution,
+    AI_FACTION_STRATEGY: [null, 'blue-tide-strategic', null, 'yellow-strategic'],
     rng: () => randomValues.shift() ?? 0,
     AI_CODEBOOK: codebook,
     codeArchetype,
