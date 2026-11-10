@@ -71,6 +71,12 @@ window.FourColorWarAI.setFactionStrategy(1, 'example');
 
 附件中能直接转为插件行为的部分（目标阵营、广场/技能/城堡目标、战术偏好和外交）已按真实玩法实现。插件上下文不提供完整友军名单，因此无法精确挑选“全军中最近的两个”去捡技能；策略用本地短时预留把同一技能的活跃认领限制为两个，但不保证它们恰好是全局最近的两个。目标评分也拿不到全军质心，改用黄方城堡到敌方城堡的距离作稳定近似。游戏既有全局自动外交继续运行；插件外交请求只对分配了该策略的阵营生效，并通过游戏原有的联盟资格、冷却与惩罚流程。回归测试可运行 `node --test tests/yellow-ai.test.cjs`。
 
+### 内置蓝方 BlueTide 策略
+
+页面同时加载 `blue-ai.js`，并通过 `window.FourColorWarAI` 仅分配给蓝方（阵营 1）。它保留 DeepSeek 脚本中的潮汐风格：在受压时回防或撤退、远程单位拉扯、早期争夺中心、优先争取高价值技能，并绕目标城堡作战。策略参数以独立的 `bluetide_v1_` 本地存储键跨局演化；它读取游戏提供的学习权重作战术微调，但不会写入或重置游戏原生的奖励学习、阵营策略或黄色插件。
+
+蓝方外交通过 `decideDiplomacy(ctx)` 返回结盟/背叛请求，由游戏再次验证双方存活、联盟容量、冷却和有效盟约，并照常执行背叛惩罚。原附件中覆盖全局 `update`、`reset`、寻敌和外交函数的补丁没有移植；由于公开上下文不提供完整敌我单位名单，插件也不伪造全军统计或“最近两名”抢技能判断。技能目标采用与黄方相同的本地短时认领近似，不修改模拟时钟或原生联盟流程。蓝、黄插件的回归测试可运行 `node --test tests/blue-ai.test.cjs tests/yellow-ai.test.cjs`。
+
 ## Music credits
 
 All four embedded tracks have individual ccMixter upload pages that label the track **Creative Commons Attribution 3.0 (CC BY 3.0)**. CC BY 3.0 permits copying, redistribution and commercial use, including bundling and playback in a game, provided the attribution and license link are retained. The ccMixter site-wide footer applies to site text and images; each linked audio upload page separately states the license for that track. The source recordings were re-encoded to 128 kbps MP3 for browser delivery; no other musical edits were made. Artist-page source credits:
